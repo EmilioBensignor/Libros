@@ -25,10 +25,48 @@ export const useStorage = () => {
         return true
     }
 
+    const uploadFile = async (bucket, path, file) => {
+        uploading.value = true
+        error.value = null
+
+        try {
+            validateImageFile(file)
+
+            const { data, error: uploadError } = await supabase.storage
+                .from(bucket)
+                .upload(path, file, { upsert: true })
+
+            if (uploadError) {
+                error.value = uploadError.message
+                throw uploadError
+            }
+
+            return data.path
+        } finally {
+            uploading.value = false
+        }
+    }
+
+    const removeFile = async (bucket, path) => {
+        const { error: removeError } = await supabase.storage
+            .from(bucket)
+            .remove([path])
+
+        if (removeError) throw removeError
+    }
+
+    const getPublicUrl = (bucket, path) => {
+        const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+        return data.publicUrl
+    }
+
     return {
         uploading: readonly(uploading),
         uploadProgress: readonly(uploadProgress),
         error: readonly(error),
-        validateImageFile
+        validateImageFile,
+        uploadFile,
+        removeFile,
+        getPublicUrl
     }
 }

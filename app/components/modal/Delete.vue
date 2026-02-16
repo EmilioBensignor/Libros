@@ -13,7 +13,7 @@
                     Cancelar
                 </ButtonPrimary>
 
-                <ButtonPrimary @click="$emit('confirm')" class="!w-max">
+                <ButtonPrimary @click="$emit('confirm')" class="!w-max !bg-error !border-error">
                     Eliminar
                 </ButtonPrimary>
             </div>

@@ -8,4 +8,6 @@ export const ROUTE_NAMES = {
     RESET_PASSWORD: "/reset-password",
     // Auth
     HOME: '/',
+    BOOKS: '/books',
+    BOOKS_NEW: '/books/new',
 };

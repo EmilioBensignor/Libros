@@ -53,8 +53,13 @@ const emit = defineEmits(['close'])
 const menu = [
     {
         route: ROUTE_NAMES.HOME,
-        title: "Ejemplo",
-        icon: "package",
+        title: "Inicio",
+        icon: "home",
+    },
+    {
+        route: ROUTE_NAMES.BOOKS,
+        title: "Libros",
+        icon: "book",
     },
 ]
 

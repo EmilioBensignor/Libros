@@ -60,6 +60,34 @@
                             <span class="text-dark font-light lg:text-xl">{{ book.topic }}</span>
                         </div>
 
+                        <div v-if="book.pages_count" class="flex flex-col gap-1">
+                            <span class="text-gray-dark text-sm font-medium">Páginas</span>
+                            <span class="text-dark font-light lg:text-xl">{{ book.pages_count }}</span>
+                        </div>
+
+                        <div v-if="book.impact_score != null" class="flex flex-col gap-1">
+                            <span class="text-gray-dark text-sm font-medium">Impacto</span>
+                            <span class="flex items-center gap-1 text-dark font-light lg:text-xl">
+                                <Icon name="tabler:bolt-filled" class="w-5 h-5 text-primary" />
+                                {{ book.impact_score }}/10
+                            </span>
+                        </div>
+
+                        <div v-if="book.started_at" class="flex flex-col gap-1">
+                            <span class="text-gray-dark text-sm font-medium">Inicio de lectura</span>
+                            <span class="text-dark font-light lg:text-xl">{{ formatDate(book.started_at) }}</span>
+                        </div>
+
+                        <div v-if="book.finished_at" class="flex flex-col gap-1">
+                            <span class="text-gray-dark text-sm font-medium">Fin de lectura</span>
+                            <span class="text-dark font-light lg:text-xl">{{ formatDate(book.finished_at) }}</span>
+                        </div>
+
+                        <div v-if="readingDuration != null" class="flex flex-col gap-1">
+                            <span class="text-gray-dark text-sm font-medium">Duración</span>
+                            <span class="text-dark font-light lg:text-xl">{{ readingDuration }} días</span>
+                        </div>
+
                         <div v-if="book.keywords?.length" class="sm:col-span-2 flex flex-col gap-2">
                             <span class="text-dark font-medium lg:text-xl">Keywords</span>
                             <div class="flex flex-wrap gap-2">
@@ -132,6 +160,19 @@
                 </div>
             </div>
 
+            <div v-if="attachments.length" class="w-full flex flex-col gap-2">
+                <HeadingH2>PDF de notas</HeadingH2>
+                <div class="flex flex-col gap-2">
+                    <a v-for="att in attachments" :key="att.id"
+                        :href="getPublicUrl('books', att.storage_path)" target="_blank" rel="noopener noreferrer"
+                        class="flex items-center gap-3 border border-gray-mid rounded-lg p-3 hover:shadow-sm transition-shadow duration-300">
+                        <Icon name="tabler:file-type-pdf" class="w-5 h-5 text-error shrink-0" />
+                        <span class="text-dark font-medium">{{ att.caption || 'PDF adjunto' }}</span>
+                        <Icon name="tabler:external-link" class="w-4 h-4 text-gray-dark ml-auto shrink-0" />
+                    </a>
+                </div>
+            </div>
+
             <div class="w-full flex flex-wrap justify-center items-center gap-3 pt-4">
                 <ButtonPrimary :to="`/books/${book.id}/edit`">Editar</ButtonPrimary>
                 <button type="button" @click="showDeleteModal = true"
@@ -201,6 +242,17 @@ const boardImages = computed(() => {
 
 const hasNotas = computed(() => {
     return book.value?.notas_rich && typeof book.value.notas_rich === 'object' && Object.keys(book.value.notas_rich).length > 0
+})
+
+const attachments = computed(() => {
+    return book.value?.book_assets?.filter(a => a.kind === 'attachment') || []
+})
+
+const readingDuration = computed(() => {
+    if (!book.value?.started_at || !book.value?.finished_at) return null
+    const start = new Date(book.value.started_at)
+    const end = new Date(book.value.finished_at)
+    return Math.round((end - start) / (1000 * 60 * 60 * 24))
 })
 
 const linkIcon = (kind) => {

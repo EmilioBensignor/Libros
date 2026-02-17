@@ -21,6 +21,19 @@
         </FormFieldsContainer>
 
         <FormFieldsContainer>
+            <FormTextField v-model="form.pages_count" label="Cantidad de páginas" id="pages_count"
+                type="number" placeholder="320" :error="errors.pages_count" @blur="validatePagesCount" />
+            <FormTextField v-model="form.impact_score" label="Impacto (1-10)" id="impact_score"
+                type="number" placeholder="1-10" :error="errors.impact_score" @blur="validateImpactScore" />
+        </FormFieldsContainer>
+
+        <FormFieldsContainer>
+            <FormDateField v-model="form.started_at" label="Inicio de lectura" id="started_at" />
+            <FormDateField v-model="form.finished_at" label="Fin de lectura" id="finished_at"
+                :min-date="form.started_at" :error="errors.finished_at" @blur="validateFinishedAt" />
+        </FormFieldsContainer>
+
+        <FormFieldsContainer>
             <FormTextareaField v-model="form.summary" label="Resumen" id="summary"
                 placeholder="Breve resumen del libro" />
             <FormTextareaField v-model="form.opinion" label="Opinión personal" id="opinion"
@@ -175,6 +188,29 @@
             </label>
         </div>
 
+        <div class="w-full flex flex-col gap-3">
+            <FormLabel>PDF de notas</FormLabel>
+            <div v-if="attachmentPreviews.length" class="flex flex-col gap-2">
+                <div v-for="(att, i) in attachmentPreviews" :key="i"
+                    class="flex items-center justify-between gap-3 border border-gray-mid rounded-lg p-3">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <Icon name="tabler:file-type-pdf" class="w-5 h-5 text-error shrink-0" />
+                        <span class="text-dark font-light truncate">{{ att.name }}</span>
+                    </div>
+                    <button type="button" @click="removeAttachment(i)"
+                        class="shrink-0 text-gray-dark hover:text-error transition-colors">
+                        <Icon name="tabler:x" class="w-5 h-5" />
+                    </button>
+                </div>
+            </div>
+            <label
+                class="flex items-center justify-center gap-2 border border-dashed border-gray-dark rounded-lg py-3 cursor-pointer text-gray-dark hover:text-primary hover:border-primary transition-colors duration-300">
+                <Icon name="tabler:upload" class="w-5 h-5" />
+                <span class="font-medium">Agregar PDF</span>
+                <input type="file" accept="application/pdf" multiple class="hidden" @change="onAttachmentsSelected" />
+            </label>
+        </div>
+
         <FormError v-if="errorMsg">{{ errorMsg }}</FormError>
 
         <div class="flex flex-col sm:flex-row gap-4">
@@ -205,7 +241,7 @@ const emit = defineEmits(['saved'])
 
 const client = useSupabaseClient()
 const user = useSupabaseUser()
-const { uploadFile, removeFile, getPublicUrl } = useStorage()
+const { uploadFile, uploadFileRaw, removeFile, getPublicUrl } = useStorage()
 const { error: notifyError } = useNotification()
 
 const isEditing = computed(() => !!props.bookId)
@@ -225,6 +261,10 @@ const form = reactive({
     keywords: [],
     takeaways: [],
     colorHex: '',
+    pages_count: '',
+    started_at: '',
+    finished_at: '',
+    impact_score: '',
     notas: [],
     links: [],
 })
@@ -233,6 +273,9 @@ const errors = reactive({
     title: '',
     rating: '',
     year: '',
+    pages_count: '',
+    impact_score: '',
+    finished_at: '',
 })
 const linkErrors = reactive({})
 
@@ -250,6 +293,18 @@ const coverRemoved = ref(false)
 const boardFiles = ref([])
 const existingBoardAssets = ref([])
 const boardRemovedIds = ref([])
+
+const attachmentFiles = ref([])
+const existingAttachmentAssets = ref([])
+const attachmentRemovedIds = ref([])
+
+const attachmentPreviews = computed(() => {
+    const existing = existingAttachmentAssets.value
+        .filter(a => !attachmentRemovedIds.value.includes(a.id))
+        .map(a => ({ name: a.caption || 'PDF adjunto', url: getPublicUrl('books', a.storage_path), assetId: a.id, isExisting: true }))
+    const newOnes = attachmentFiles.value.map((f, i) => ({ name: f.file.name, url: null, index: i, isExisting: false }))
+    return [...existing, ...newOnes]
+})
 
 const boardPreviews = computed(() => {
     const existing = existingBoardAssets.value
@@ -307,6 +362,10 @@ if (props.initialData) {
     form.takeaways = d.takeaways ? [...d.takeaways] : []
     form.colorHex = d.color_representativo?.hex || ''
     form.notas = jsonToNotas(d.notas_rich)
+    form.pages_count = d.pages_count != null ? d.pages_count : ''
+    form.started_at = d.started_at || ''
+    form.finished_at = d.finished_at || ''
+    form.impact_score = d.impact_score != null ? d.impact_score : ''
 
     if (d.book_links?.length) {
         form.links = d.book_links.map(l => ({
@@ -324,6 +383,7 @@ if (props.initialData) {
             coverPreview.value = getPublicUrl('books', cover.storage_path)
         }
         existingBoardAssets.value = d.book_assets.filter(a => a.kind === 'board_image')
+        existingAttachmentAssets.value = d.book_assets.filter(a => a.kind === 'attachment')
     }
 }
 
@@ -378,6 +438,27 @@ const removeBoardImage = (index) => {
     }
 }
 
+const onAttachmentsSelected = (e) => {
+    const files = Array.from(e.target.files || [])
+    for (const file of files) {
+        if (file.type !== 'application/pdf') {
+            notifyError('Solo se permiten archivos PDF')
+            continue
+        }
+        attachmentFiles.value.push({ file })
+    }
+    e.target.value = ''
+}
+
+const removeAttachment = (index) => {
+    const preview = attachmentPreviews.value[index]
+    if (preview.isExisting) {
+        attachmentRemovedIds.value.push(preview.assetId)
+    } else {
+        attachmentFiles.value.splice(preview.index, 1)
+    }
+}
+
 const validateTitle = () => {
     errors.title = !form.title.trim() ? 'El título es requerido' : ''
 }
@@ -402,6 +483,35 @@ const validateYear = () => {
     }
 }
 
+const validatePagesCount = () => {
+    if (form.pages_count !== '' && form.pages_count != null) {
+        const num = Number(form.pages_count)
+        errors.pages_count = (isNaN(num) || !Number.isInteger(num) || num <= 0)
+            ? 'Las páginas deben ser un número entero mayor a 0' : ''
+    } else {
+        errors.pages_count = ''
+    }
+}
+
+const validateImpactScore = () => {
+    if (form.impact_score !== '' && form.impact_score != null) {
+        const num = Number(form.impact_score)
+        errors.impact_score = (isNaN(num) || !Number.isInteger(num) || num < 1 || num > 10)
+            ? 'El impacto debe ser un número entero entre 1 y 10' : ''
+    } else {
+        errors.impact_score = ''
+    }
+}
+
+const validateFinishedAt = () => {
+    if (form.started_at && form.finished_at) {
+        errors.finished_at = (form.finished_at < form.started_at)
+            ? 'La fecha de fin debe ser igual o posterior a la de inicio' : ''
+    } else {
+        errors.finished_at = ''
+    }
+}
+
 const validateLinks = () => {
     let valid = true
     form.links.forEach((link, i) => {
@@ -418,6 +528,10 @@ const validateLinks = () => {
 watch(() => form.title, () => { if (errors.title) errors.title = '' })
 watch(() => form.rating, () => { if (errors.rating) errors.rating = '' })
 watch(() => form.year, () => { if (errors.year) errors.year = '' })
+watch(() => form.pages_count, () => { if (errors.pages_count) errors.pages_count = '' })
+watch(() => form.impact_score, () => { if (errors.impact_score) errors.impact_score = '' })
+watch(() => form.finished_at, () => { if (errors.finished_at) errors.finished_at = '' })
+watch(() => form.started_at, () => { if (errors.finished_at) validateFinishedAt() })
 
 const handleSubmit = async () => {
     isLoading.value = true
@@ -426,9 +540,12 @@ const handleSubmit = async () => {
     validateTitle()
     validateRating()
     validateYear()
+    validatePagesCount()
+    validateImpactScore()
+    validateFinishedAt()
     const linksValid = validateLinks()
 
-    if (errors.title || errors.rating || errors.year || !linksValid) {
+    if (errors.title || errors.rating || errors.year || errors.pages_count || errors.impact_score || errors.finished_at || !linksValid) {
         isLoading.value = false
         return
     }
@@ -450,6 +567,10 @@ const handleSubmit = async () => {
             keywords: form.keywords,
             takeaways: form.takeaways,
             color_representativo: form.colorHex ? { hex: form.colorHex } : null,
+            pages_count: form.pages_count !== '' ? Number(form.pages_count) : null,
+            started_at: form.started_at || null,
+            finished_at: form.finished_at || null,
+            impact_score: form.impact_score !== '' ? Number(form.impact_score) : null,
             notas_rich: notasToJson(form.notas),
             user_id: uid,
         }
@@ -467,6 +588,7 @@ const handleSubmit = async () => {
 
         await syncCover(bookId, uid)
         await syncBoardImages(bookId, uid)
+        await syncAttachments(bookId, uid)
         await syncLinks(bookId, uid)
 
         emit('saved', bookId)
@@ -535,6 +657,31 @@ const syncBoardImages = async (bookId, uid) => {
             storage_path: path,
             source: 'photo',
             sort_order: i,
+            user_id: uid,
+        })
+    }
+}
+
+const syncAttachments = async (bookId, uid) => {
+    for (const assetId of attachmentRemovedIds.value) {
+        const asset = existingAttachmentAssets.value.find(a => a.id === assetId)
+        if (asset) {
+            await removeFile('books', asset.storage_path).catch(() => {})
+            await client.from('book_assets').delete().eq('id', assetId)
+        }
+    }
+
+    for (const { file } of attachmentFiles.value) {
+        const assetId = crypto.randomUUID()
+        const path = `${uid}/attachments/${bookId}/${assetId}.pdf`
+        await uploadFileRaw('books', path, file)
+        await client.from('book_assets').insert({
+            book_id: bookId,
+            kind: 'attachment',
+            storage_path: path,
+            caption: file.name,
+            source: 'other',
+            sort_order: 0,
             user_id: uid,
         })
     }

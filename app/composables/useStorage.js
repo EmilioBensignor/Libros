@@ -47,6 +47,35 @@ export const useStorage = () => {
         }
     }
 
+    const uploadFileRaw = async (bucket, path, file, { maxSizeMB = 20 } = {}) => {
+        uploading.value = true
+        error.value = null
+
+        try {
+            if (!file || !file.type) {
+                throw new Error('Archivo inválido o sin tipo')
+            }
+
+            const maxSize = maxSizeMB * 1024 * 1024
+            if (file.size > maxSize) {
+                throw new Error(`El archivo es demasiado grande. Máximo ${maxSizeMB}MB`)
+            }
+
+            const { data, error: uploadError } = await supabase.storage
+                .from(bucket)
+                .upload(path, file, { upsert: true })
+
+            if (uploadError) {
+                error.value = uploadError.message
+                throw uploadError
+            }
+
+            return data.path
+        } finally {
+            uploading.value = false
+        }
+    }
+
     const removeFile = async (bucket, path) => {
         const { error: removeError } = await supabase.storage
             .from(bucket)
@@ -66,6 +95,7 @@ export const useStorage = () => {
         error: readonly(error),
         validateImageFile,
         uploadFile,
+        uploadFileRaw,
         removeFile,
         getPublicUrl
     }

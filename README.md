@@ -1,75 +1,22 @@
-# Nuxt Minimal Starter
+# Libros
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Lo que leí, lo que estoy leyendo y lo que sigue. Nuxt 4 + Nuxt UI v4 + Tailwind v4, con la base en
+el proyecto de Supabase de Registro.
 
-## Setup
-
-Make sure to install dependencies:
-
-```bash
-# npm
-npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
-```
-
-## Development Server
-
-Start the development server on `http://localhost:3000`:
+## Desarrollo
 
 ```bash
-# npm
-npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
+pnpm start     # git pull + install + dev --open
+pnpm dev       # solo dev
 ```
 
-## Production
+Necesita un `.env` con `SUPABASE_URL` y `SUPABASE_KEY` del proyecto Registro.
 
-Build the application for production:
+## Producción
 
 ```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
+pnpm build     # build
+pnpm preview   # preview del build
 ```
 
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+Documentación del proyecto en `CLAUDE.md` y `docs/`.

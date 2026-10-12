@@ -1,123 +1,139 @@
 <template>
-    <DefaultSection>
-        <HeadingH1>Iniciar sesión</HeadingH1>
+  <div class="min-h-dvh flex items-center justify-center bg-bg px-6 py-10">
+    <div class="w-full max-w-90 flex flex-col gap-7">
+      <h1 class="font-serif text-[48px] leading-none text-ink text-center">
+        Libros
+      </h1>
 
-        <FormLayout @submit.prevent="handleSignIn">
-            <FormFieldsContainer>
-                <FormTextField v-model="form.email" label="Correo electrónico" id="correo-electronico" type="email"
-                    placeholder="stevejobs@gmail.com" autocomplete="username" :error="errors.email" required
-                    @blur="validateEmail" />
+      <UiErrorNote
+        v-if="formError"
+        :message="formError"
+      />
 
-                <FormPasswordField v-model="form.password" label="Contraseña" id="contrasena" placeholder="********"
-                    :error="errors.password" required @blur="validatePassword" />
-            </FormFieldsContainer>
+      <form
+        class="flex flex-col gap-4"
+        novalidate
+        @submit.prevent="submit"
+      >
+        <div class="flex flex-col gap-1.5">
+          <label
+            for="login-email"
+            class="t-label text-ink"
+          >
+            Email
+          </label>
+          <UInput
+            id="login-email"
+            v-model="email"
+            type="email"
+            placeholder="tu@email.com"
+            size="lg"
+            autocomplete="email"
+            autocapitalize="none"
+            spellcheck="false"
+            inputmode="email"
+            class="w-full"
+            :ui="fieldUi"
+          />
+        </div>
 
-            <NuxtLink :to="ROUTE_NAMES.FORGOT_PASSWORD" class="text-dark font-light underline">
-                ¿Olvidaste tu contraseña?
-            </NuxtLink>
+        <div class="flex flex-col gap-1.5">
+          <label
+            for="login-password"
+            class="t-label text-ink"
+          >
+            Contraseña
+          </label>
+          <UInput
+            id="login-password"
+            v-model="password"
+            :type="showPassword ? 'text' : 'password'"
+            placeholder="Tu contraseña"
+            size="lg"
+            autocomplete="current-password"
+            class="w-full"
+            :ui="fieldUi"
+          >
+            <template #trailing>
+              <button
+                type="button"
+                class="size-6 flex items-center justify-center text-ink rounded-card p-0"
+                :aria-label="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                :aria-pressed="showPassword"
+                @click="showPassword = !showPassword"
+              >
+                <UIcon
+                  :name="showPassword ? 'i-ph-eye-slash' : 'i-ph-eye'"
+                  class="size-5"
+                />
+              </button>
+            </template>
+          </UInput>
+        </div>
 
-            <p class="flex items-center gap-1">Si no tienes una cuenta,<NuxtLink :to="ROUTE_NAMES.REGISTER"
-                    class="text-dark font-light underline">
-                    registrate</NuxtLink>
-            </p>
-            <FormError v-if="errorMsg">
-                {{ errorMsg }}
-            </FormError>
-
-            <ButtonPrimary type="submit">
-                <span v-if="!isLoading">Ingresar</span>
-                <span v-else class="flex justify-center items-center gap-2">
-                    <Icon name="tabler:loader-2" class="animate-spin" />
-                    Iniciando sesión...
-                </span>
-            </ButtonPrimary>
-        </FormLayout>
-    </DefaultSection>
+        <UButton
+          type="submit"
+          label="Entrar"
+          size="lg"
+          block
+          :loading="loading"
+          :disabled="!canSubmit"
+          :ui="{ base: 'min-h-11 justify-center' }"
+          class="mt-1"
+        />
+      </form>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { ROUTE_NAMES } from '~/constants/ROUTE_NAMES.js'
+definePageMeta({ layout: false })
 
-definePageMeta({
-    layout: "auth",
-});
-
-const client = useSupabaseClient();
-const router = useRouter();
-
-const form = reactive({
-    email: '',
-    password: ''
-})
-
-const errors = reactive({
-    email: '',
-    password: ''
-})
-
-const isLoading = ref(false)
-const errorMsg = ref('');
-
-const validateEmail = () => {
-    if (!form.email) {
-        errors.email = 'El correo electrónico es requerido'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-        errors.email = 'Formato de correo electrónico inválido'
-    } else {
-        errors.email = ''
-    }
+const ERROR_MESSAGES = {
+  invalid_credentials: 'Email o contraseña incorrectos.',
+  email_not_confirmed: 'Confirmá tu email antes de entrar.',
+  over_request_rate_limit: 'Demasiados intentos. Esperá un momento.',
+  validation_failed: 'Revisá los datos ingresados.'
 }
 
-const validatePassword = () => {
-    if (!form.password) {
-        errors.password = 'La contraseña es requerida'
-    } else {
-        errors.password = ''
-    }
+const client = useSupabaseClient()
+const user = useSupabaseUser()
+
+const email = ref('')
+const password = ref('')
+const loading = ref(false)
+const showPassword = ref(false)
+const formError = ref('')
+
+const fieldUi = {
+  base: 'bg-surface text-ink placeholder:text-ink/40 focus-visible:ring-2 focus-visible:ring-accent-400',
+  trailing: 'pe-2'
 }
 
-watch(() => form.email, () => {
-    if (errors.email) errors.email = ''
+const canSubmit = computed(() => !loading.value && email.value.trim() !== '' && password.value !== '')
+
+watchEffect(() => {
+  if (user.value) navigateTo('/')
 })
 
-watch(() => form.password, () => {
-    if (errors.password) errors.password = ''
-})
-
-const handleSignIn = async () => {
-    isLoading.value = true;
-    errorMsg.value = '';
-
-    validateEmail()
-    validatePassword()
-
-    if (errors.email || errors.password) {
-        isLoading.value = false
-        return
-    }
-
-    try {
-        localStorage.setItem('lastLoginEmail', form.email);
-        errorMsg.value = '';
-        const { error } = await client.auth.signInWithPassword({
-            email: form.email,
-            password: form.password,
-            options: {
-                staySignedIn: true
-            }
-        });
-
-        if (error) {
-            errorMsg.value = handleSupabaseError(error);
-        }
-
-        router.push(ROUTE_NAMES.HOME)
-
-    } catch (error) {
-        errors.password = 'Credenciales incorrectas'
-    } finally {
-        isLoading.value = false
-    }
+function messageFor(err) {
+  return ERROR_MESSAGES[err?.code] || err?.message || 'Algo salió mal. Probá de nuevo.'
 }
 
+async function submit() {
+  if (!canSubmit.value) return
+  formError.value = ''
+  loading.value = true
+
+  const { data, error: err } = await client.auth.signInWithPassword({
+    email: email.value.trim(),
+    password: password.value
+  })
+  loading.value = false
+  if (err) {
+    formError.value = messageFor(err)
+    return
+  }
+  if (data?.session) await navigateTo('/')
+}
 </script>

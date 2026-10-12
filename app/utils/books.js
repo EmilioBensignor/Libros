@@ -22,9 +22,11 @@ const FALLBACK_COLOR = '#d6d3d1'
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
-export const PODIUM_LABELS = { 1: '1°', 2: '2°', 3: '3°' }
+export const PODIUM_LABELS = { 1: '1°', 2: '2°', 3: '3°', 4: '4°', 5: '5°' }
 
-export const MEDAL_COLORS = { 1: '#c9a227', 2: '#a3a8ae', 3: '#b0743a' }
+export const MIN_PODIUM_RATING = 4
+
+export const MEDAL_COLORS = { 1: '#c9a227', 2: '#a3a8ae', 3: '#b0743a', 4: '#57534e', 5: '#57534e' }
 
 export function formatRating(rating) {
   return rating ? String(Number(rating)).replace('.', ',') : ''
@@ -53,6 +55,7 @@ export function searchLibrary(books, query) {
   for (const book of books) {
     const fields = [
       { label: null, texts: [`${book.title} ${book.author || ''}`] },
+      { label: 'Opinión', texts: [book.opinion || ''] },
       { label: 'Keywords', texts: book.keywords || [] },
       { label: 'Resumen', texts: [book.summary || ''] },
       { label: 'Aprendizajes', texts: book.takeaways || [] }

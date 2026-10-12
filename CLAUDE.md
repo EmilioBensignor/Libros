@@ -24,7 +24,7 @@ y la cola de lo que sigue. Un solo usuario, login con la misma cuenta de Registr
 | @nuxtjs/supabase | 2.0 | Auth (email + contraseña), redirect global, cliente |
 | Íconos | Phosphor | `@iconify-json/ph`, prefijo `i-ph-` |
 | Fuentes | Google Fonts | Geist (UI) + Instrument Serif (títulos y portadas) |
-| Deploy | Vercel | Pendiente de crear el proyecto |
+| Deploy | Vercel | https://libros-motix.vercel.app (env: `SUPABASE_URL`, `SUPABASE_KEY` de Registro) |
 
 Sin Pinia, sin dayjs, sin librería de Markdown: las notas se renderizan con `renderNotes()` de
 `utils/books.js`, que cubre lo que usan los apuntes (`#`, `##`, `###`, bullets con anidado,
@@ -66,7 +66,7 @@ app/
     book/RatingInput.vue     # 5 estrellas (BookRatingInput)
     book/StatusTabs.vue      # tabs de estado del header (BookStatusTabs)
     book/PodiumPicker.vue    # 1°/2°/3° con color de medalla (BookPodiumPicker)
-    book/PodiumSlot.vue      # un puesto de /podios, con hueco si está libre (BookPodiumSlot)
+    book/PodiumSlot.vue      # un puesto de /podios: tapa + medalla, sin título (BookPodiumSlot)
     book/SearchResults.vue   # resultados del buscador global (BookSearchResults)
     book/ShelfBook.vue       # un lomo del estante (BookShelfBook)
     book/ViewToggle.vue      # toggle Portadas | Estante del header (BookViewToggle)
@@ -194,20 +194,23 @@ posición en la cola). Los libros del podio llevan un círculo negro con el pues
 Estados: `leido`, `leyendo`, `por_leer` (comprado, en cola), `backlog` (recomendado, sin decidir
 si se lee) y `abandonado`.
 
-Ancho: `max-w-400` (1600px) con `xl:px-14`; la grilla llega a 8 columnas desde `xl:` (1280px).
+Ancho: `max-w-400` (1600px) con `xl:px-14`; la grilla llega a 8 columnas desde `xl:` (1280px), con
+`gap-x-6`/`md:gap-x-8` para que el marco de medalla no deje tapas pegadas.
 
 **Ficha (`/libros/[id]`, archivo `pages/libros/[id]/index.vue`)**: pensada para repasar libro por
 libro. Barra de arriba: volver a la lista del estado a la izquierda; a la derecha el paso siguiente
 (si aplica), Notas (lleva a la página de notas), Editar, borrar y, separadas por una línea, las
 flechas anterior/siguiente con "N de M" (libros del mismo estado, en el orden de la lista). No hay
-botón de Drive en la ficha (Lio lo sacó; queda en la página de notas). La columna izquierda **no
-puede tener scroll**: portada (`15rem`/`18rem`, sticky en `top-22`) y, si está leído, Puntaje y
-Podio (dos filas de `BookPodiumPicker`: el año y General). A la derecha, desde `xl:`: arriba una
+botón de Drive en la ficha (Lio lo sacó; queda en la página de notas). La columna izquierda es **solo la portada** (`15rem`/`18rem`, sticky
+en `top-22`), con el marco de medalla si está en el podio del año. Lio sacó de la ficha el bloque
+editable de puntaje y podio ("está de más"): el puntaje se muestra al lado del autor
+("Autor · 5 ★") y se edita, junto con los dos podios, desde el modal de Editar. A la derecha, desde `xl:`: arriba una
 fila con título + autor a la izquierda y los datos con etiqueta a la derecha (Estado si no está
 leído, Leído, Tema, Páginas, Publicado); abajo "Resumen" (con las keywords debajo) | "Aprendizajes" lado a lado. Los nombres
 "Resumen" y "Aprendizajes" los pidió Lio (antes "De qué trata" e "Ideas clave"); en la base siguen
 siendo `summary` y `takeaways`. En mobile las acciones de la barra se agrupan en un
-`UDropdownMenu` (⋯) y quedan visibles solo volver y las flechas.
+`UDropdownMenu` (⋯) y quedan visibles solo volver y las flechas; la tapa va sola arriba (`w-40`) y
+los datos en una sola línea de 4 columnas con etiqueta de 11px.
 
 **Un solo ancho para toda la app** (pedido de Lio): header, biblioteca, ficha y notas usan el
 contenedor del layout (`max-w-400`, mismo padding), así los bordes no saltan entre páginas. Ninguna
@@ -226,13 +229,31 @@ dos zonas clickeables (mitad izquierda = ,5), muestra el número al lado y la me
 llena recortada con `clip-path` sobre la vacía (el ícono `star-half-fill` de Phosphor no dibuja el
 contorno de la otra mitad). Tocar el valor actual lo borra.
 
-**Podios**: anual (`podium`, por año de `finished_at`) y general (`podium_all`, de todos los
-tiempos). Un puesto por alcance, garantizado con índices únicos parciales. `setPodium(book, place,
-field)` libera el puesto si lo tenía otro libro y después lo asigna. Colores de medalla en
-`MEDAL_COLORS` (`utils/books.js`) y tokens `--color-gold/silver/bronze`. En la grilla, el podio
-anual se marca con un marco (`outline` con offset) del color de la medalla y un círculo con el
-puesto. **`/podios`**: el general arriba en forma de podio (2° · 1° · 3°, el 1° más alto) y debajo
-el top 3 de cada año, con huecos punteados "Sin elegir". Link "Podios" en el header.
+**Podios**: anual (`podium` 1 a 3, por año de `finished_at`) y general (`podium_all` 1 a 5: del 1
+al 3 es el podio y **4 y 5 son menciones honoríficas**). Un puesto por alcance (índices únicos
+parciales). **Para entrar a cualquier podio el puntaje mínimo es 4** (`MIN_PODIUM_RATING`, y un
+check en la base). Se elige en el modal: los dos `BookPodiumPicker` (año de la fecha y General
+1° a 5°) aparecen solo si el libro está leído, con fecha y con 4 o más; bajar el puntaje por debajo
+de 4 lo saca de los dos podios al guardar. El modal guarda el libro y después aplica los cambios de
+podio con `setPodium`, así elegir un puesto ocupado se lo saca al otro libro. `setPodium(book, place, field)` libera el puesto si lo tenía otro
+libro y después lo asigna. Colores en `MEDAL_COLORS`: oro, plata, bronce y `#57534e` para las
+menciones. En la grilla, el podio anual se marca con un marco (`outline` 3px, offset 2px: más grande se comía el
+espacio entre tapas y lo recortaban los sliders) del color de la medalla y un círculo
+con el puesto. **`/podios`**: todo en filas con el mismo formato (título con regla + puestos en orden, en una
+grilla de 5 columnas para que los tamaños coincidan; en mobile cada fila es un slider horizontal
+con puestos de `w-28`, en vez de partirse en dos filas): primero "General" (1° a 5°, aclarando que 4° y
+5° son menciones; antes era un podio escalonado y Lio lo pidió en fila) y después el top 3 de cada
+año. En años cerrados solo se muestran los puestos
+ocupados (en 2024 hay un solo libro con 4 o más); el año en curso muestra los huecos punteados
+"Sin elegir" porque todavía se completan.
+
+**Opinión**: `opinion`, una frase corta con lo que le dejó el libro. En la ficha va bajo el autor, en
+serif grande y entre comillas; entra en el buscador.
+
+**Reglas de contenido** (las fijó Lio en la auditoría): keywords con mayúscula inicial (el modal ya
+no las pasa a minúsculas), aprendizajes siempre en cantidad par (hoy todos tienen 6). El formato
+completo está arriba de `docs/auditoria.md`, que es también la vía para editar todo de una:
+se edita el archivo y se reimporta (receta en `docs/datos.md`).
 
 **Alta y edición**: `BookForm` en un `UModal` de `max-w-5xl`, en dos columnas: a la izquierda la
 portada en vivo (`BookCover` con los datos del form) con "Buscar portada" y la URL; a la derecha
@@ -259,10 +280,9 @@ con `python3 scripts/generate-icon.py public` (PIL; toma el isotipo de
 
 ## Pendiente
 
-- Puntajes: los 17 leídos se cargaron sin `rating` (las notas no lo tenían).
-- Deploy en Vercel con las dos env vars de Supabase.
 - `Product Psychology.pdf` (carpeta Libros de Drive) no se cargó: no queda claro si es un libro
   leído o material de consulta.
+- En el repo de Registro quedan sin commitear las migraciones de `books` y la nota en su `CLAUDE.md`.
 
 # ━━━━━━ ZONA 3 · HISTORIAL (no vigente) ━━━━━━
 

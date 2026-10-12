@@ -4,7 +4,7 @@
 
     <BookSearchResults v-if="search.trim() && !loading" :query="search" />
 
-    <div v-else-if="loading" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-x-4 md:gap-x-6 gap-y-8 md:gap-y-10">
+    <div v-else-if="loading" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-x-6 md:gap-x-8 gap-y-8 md:gap-y-10">
       <div v-for="n in 10" :key="n" class="aspect-2/3 skeleton" />
     </div>
 
@@ -18,7 +18,7 @@
           <h2 class="font-serif text-[32px] leading-none tabular">{{ group.label }}</h2>
           <span class="t-meta tabular">{{ group.books.length }} {{ group.books.length === 1 ? 'libro' : 'libros' }}</span>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-x-4 md:gap-x-6 gap-y-8 md:gap-y-10">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-x-6 md:gap-x-8 gap-y-8 md:gap-y-10">
           <BookCard
             v-for="(book, i) in group.books"
             :key="book.id"

@@ -2,12 +2,13 @@
   <div class="flex flex-col gap-14">
     <UiErrorNote :message="error" :on-retry="load" />
 
-    <section class="flex flex-col items-center gap-8">
-      <h1 class="font-serif text-[44px] sm:text-[56px] leading-none text-center">Podio general</h1>
-      <div class="w-full max-w-3xl grid grid-cols-3 items-start gap-4 sm:gap-8">
-        <BookPodiumSlot :place="2" :book="overall[2]" class="sm:pt-10" />
-        <BookPodiumSlot :place="1" :book="overall[1]" />
-        <BookPodiumSlot :place="3" :book="overall[3]" class="sm:pt-16" />
+    <section class="flex flex-col gap-6">
+      <div class="flex items-baseline justify-between gap-4 border-b border-line pb-2">
+        <h2 class="font-serif text-[32px] leading-none">General</h2>
+        <span class="t-meta">4° y 5° son menciones</span>
+      </div>
+      <div class="w-full max-w-4xl flex sm:grid sm:grid-cols-5 gap-6 sm:gap-10 overflow-x-auto sm:overflow-visible overscroll-x-contain scrollbar-none -mx-4 sm:mx-0 px-5 sm:px-1.5 pt-2 pb-1">
+        <BookPodiumSlot v-for="place in [1, 2, 3, 4, 5]" :key="place" :place="place" :book="overall[place]" class="w-28 shrink-0 sm:w-auto" />
       </div>
     </section>
 
@@ -16,8 +17,8 @@
         <h2 class="font-serif text-[32px] leading-none tabular">{{ year.label }}</h2>
         <span class="t-meta tabular">{{ year.count }} {{ year.count === 1 ? 'libro' : 'libros' }}</span>
       </div>
-      <div class="w-full max-w-2xl grid grid-cols-3 gap-4 sm:gap-8">
-        <BookPodiumSlot v-for="place in [1, 2, 3]" :key="place" :place="place" :book="year.podium[place]" />
+      <div class="w-full max-w-4xl flex sm:grid sm:grid-cols-5 gap-6 sm:gap-10 overflow-x-auto sm:overflow-visible overscroll-x-contain scrollbar-none -mx-4 sm:mx-0 px-5 sm:px-1.5 pt-2 pb-1">
+        <BookPodiumSlot v-for="place in year.places" :key="place" :place="place" :book="year.podium[place]" class="w-28 shrink-0 sm:w-auto" />
       </div>
     </section>
   </div>
@@ -42,7 +43,11 @@ const years = computed(() => {
     entry.count++
     if (book.podium) entry.podium[book.podium] = book
   }
-  return [...byYear.values()].sort((a, b) => b.label.localeCompare(a.label))
+  const currentYear = String(new Date().getFullYear())
+  return [...byYear.values()]
+    .map(y => ({ ...y, places: y.label === currentYear ? [1, 2, 3] : [1, 2, 3].filter(p => y.podium[p]) }))
+    .filter(y => y.places.length)
+    .sort((a, b) => b.label.localeCompare(a.label))
 })
 
 useHead({ title: 'Podios · Libros' })

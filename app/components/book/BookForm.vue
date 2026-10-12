@@ -95,6 +95,13 @@
             </UFormField>
           </div>
 
+          <UFormField v-if="podiumEligible" label="Podio">
+            <div class="flex flex-col gap-2 sm:max-w-sm">
+              <BookPodiumPicker v-model="form.podium" :label="formYear" :holders="yearHolders" />
+              <BookPodiumPicker v-model="form.podium_all" label="General" :places="[1, 2, 3, 4, 5]" :holders="allHolders" />
+            </div>
+          </UFormField>
+
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <UFormField label="Tema" class="col-span-2 sm:col-span-1">
               <USelect v-model="form.topic" :items="topicItems" size="lg" class="w-full" placeholder="Elegí uno" />
@@ -108,13 +115,16 @@
           </div>
 
           <div class="flex flex-col gap-5 border-t border-line pt-6">
+            <UFormField label="Opinión" hint="Una frase con lo que te dejó">
+              <UInput v-model="form.opinion" size="lg" class="w-full" />
+            </UFormField>
             <UFormField label="Resumen">
               <UTextarea v-model="form.summary" :rows="2" autoresize class="w-full" />
             </UFormField>
             <UFormField label="Keywords" hint="Separadas por coma">
-              <UInput v-model="form.keywordsText" size="lg" class="w-full" placeholder="liderazgo, cultura, equipos" />
+              <UInput v-model="form.keywordsText" size="lg" class="w-full" placeholder="Liderazgo, Cultura, Equipos" />
             </UFormField>
-            <UFormField label="Aprendizajes" hint="Uno por línea">
+            <UFormField label="Aprendizajes" hint="Uno por línea, en cantidad par">
               <UTextarea v-model="form.takeawaysText" :rows="4" autoresize class="w-full" />
             </UFormField>
             <UFormField label="Notas" hint="## título · - punto · **negrita**">
@@ -148,7 +158,7 @@
 const SEARCH_DEBOUNCE_MS = 350
 
 const { open, editing } = useBookForm()
-const { save } = useBooks()
+const { books, save, setPodium } = useBooks()
 const toast = useToast()
 
 const form = ref(emptyForm())
@@ -166,6 +176,20 @@ const topicItems = TOPICS.map(t => ({ label: t.value, value: t.value }))
 
 const canSubmit = computed(() => !saving.value && form.value.title?.trim())
 const showFinished = computed(() => ['leido', 'abandonado'].includes(form.value.status))
+const formYear = computed(() => yearOf(form.value.finished_at))
+const podiumEligible = computed(() =>
+  form.value.status === 'leido' && Number(form.value.rating) >= MIN_PODIUM_RATING && !!form.value.finished_at)
+
+function holdersFor(field, sameScope) {
+  const holders = {}
+  for (const b of books.value) {
+    if (b[field] && b.id !== editing.value?.id && sameScope(b)) holders[b[field]] = b.title
+  }
+  return holders
+}
+
+const yearHolders = computed(() => holdersFor('podium', b => yearOf(b.finished_at) === formYear.value))
+const allHolders = computed(() => holdersFor('podium_all', () => true))
 
 const preview = computed(() => ({
   title: form.value.title || 'Título',
@@ -219,6 +243,9 @@ function emptyForm() {
     summary: '',
     takeawaysText: '',
     keywordsText: '',
+    opinion: '',
+    podium: null,
+    podium_all: null,
     notes: '',
     drive_url: '',
     cover_url: ''
@@ -259,14 +286,15 @@ function payload() {
     published_year: f.published_year || null,
     summary: blankToNull(f.summary),
     takeaways: f.takeawaysText.split('\n').map(t => t.trim()).filter(Boolean),
-    keywords: [...new Set(f.keywordsText.split(',').map(k => k.trim().toLowerCase()).filter(Boolean))],
+    keywords: [...new Set(f.keywordsText.split(',').map(k => k.trim()).filter(Boolean))],
+    opinion: blankToNull(f.opinion),
     notes: blankToNull(f.notes),
     drive_url: blankToNull(f.drive_url),
     cover_url: blankToNull(f.cover_url),
     ...(editing.value
       ? {
           podium: keepsPodium() ? editing.value.podium : null,
-          podium_all: f.status === 'leido' ? editing.value.podium_all : null
+          podium_all: podiumEligible.value ? editing.value.podium_all : null
         }
       : {})
   }
@@ -274,7 +302,7 @@ function payload() {
 
 function keepsPodium() {
   const f = form.value
-  return f.status === 'leido' && f.finished_at && yearOf(f.finished_at) === yearOf(editing.value.finished_at)
+  return f.status === 'leido' && Number(f.rating) >= MIN_PODIUM_RATING && f.finished_at && yearOf(f.finished_at) === yearOf(editing.value.finished_at)
 }
 
 async function findCover() {
@@ -299,7 +327,11 @@ async function submit() {
     if (!editing.value && !form.value.cover_url) {
       form.value.cover_url = await searchCover(form.value.title, form.value.author).catch(() => null) || ''
     }
-    const saved = await save(payload())
+    let saved = await save(payload())
+    for (const field of ['podium', 'podium_all']) {
+      const wanted = podiumEligible.value ? form.value[field] || null : null
+      if (wanted !== (saved[field] || null)) saved = await setPodium(saved, wanted, field)
+    }
     open.value = false
     toast.add({ title: editing.value ? 'Libro guardado' : 'Libro agregado', icon: 'i-ph-check' })
     if (!editing.value) await navigateTo(`/libros/${saved.id}`)

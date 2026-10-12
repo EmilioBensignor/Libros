@@ -71,37 +71,12 @@
     </UiEmptyState>
 
     <article v-else class="grid grid-cols-1 md:grid-cols-[15rem_minmax(0,1fr)] lg:grid-cols-[18rem_minmax(0,1fr)] gap-8 md:gap-12 lg:gap-20">
-      <aside class="flex flex-row md:flex-col items-start gap-5 md:sticky md:top-22 md:self-start">
+      <aside class="flex flex-col items-start md:sticky md:top-22 md:self-start">
         <div
-          class="w-36 md:w-full shrink-0 rounded-[6px]"
-          :style="medal ? { outline: `3px solid ${medal}`, outlineOffset: '4px' } : null"
+          class="w-40 md:w-full shrink-0 rounded-[6px]"
+          :style="medal ? { outline: `3px solid ${medal}`, outlineOffset: '2px' } : null"
         >
           <BookCover :book="book" large />
-        </div>
-
-        <div v-if="book.status === 'leido'" class="w-full flex flex-col gap-5">
-          <div class="flex flex-col gap-1">
-            <span class="t-label">Puntaje</span>
-            <BookRatingInput :model-value="book.rating" class="-ml-1" @update:model-value="rate" />
-          </div>
-          <div class="flex flex-col gap-2">
-            <span class="t-label">Podio</span>
-            <BookPodiumPicker
-              v-if="podiumYear"
-              :model-value="book.podium"
-              :label="podiumYear"
-              :holders="yearHolders"
-              :disabled="savingPodium"
-              @update:model-value="place => togglePodium(place, 'podium')"
-            />
-            <BookPodiumPicker
-              :model-value="book.podium_all"
-              label="General"
-              :holders="allHolders"
-              :disabled="savingPodium"
-              @update:model-value="place => togglePodium(place, 'podium_all')"
-            />
-          </div>
         </div>
       </aside>
 
@@ -111,13 +86,21 @@
             <h1 class="font-serif text-[44px] sm:text-[60px] lg:text-[76px] leading-[0.95] wrap-break-word">
               {{ book.title }}
             </h1>
-            <p v-if="book.author" class="t-body text-[20px]">{{ book.author }}</p>
+            <p v-if="book.author || book.rating" class="flex flex-wrap items-center gap-x-2 t-body text-[20px]">
+              <span v-if="book.author">{{ book.author }}</span>
+              <span v-if="book.author && book.rating" aria-hidden="true">·</span>
+              <span v-if="book.rating" class="flex items-center gap-1 tabular" :aria-label="`Puntaje ${formatRating(book.rating)} de 5`">
+                {{ formatRating(book.rating) }}
+                <UIcon name="i-ph-star-fill" class="size-5 text-gold" />
+              </span>
+            </p>
+            <p v-if="book.opinion" class="max-w-[48ch] font-serif text-[24px] sm:text-[28px] leading-[1.2] mt-3">“{{ book.opinion }}”</p>
           </div>
 
-          <dl class="flex flex-wrap shrink-0 gap-x-10 gap-y-3 xl:pb-2">
-            <div v-for="fact in facts" :key="fact.label" class="flex flex-col gap-0.5">
-              <dt class="t-label">{{ fact.label }}</dt>
-              <dd class="t-strong tabular">{{ fact.value }}</dd>
+          <dl class="grid grid-cols-4 md:flex md:flex-wrap shrink-0 gap-x-3 md:gap-x-10 gap-y-3 xl:pb-2">
+            <div v-for="fact in facts" :key="fact.label" class="min-w-0 flex flex-col gap-0.5">
+              <dt class="text-[11px] md:text-[14px] font-medium uppercase tracking-[0.06em] truncate">{{ fact.label }}</dt>
+              <dd class="text-[14px] md:text-[16px] font-medium tabular truncate">{{ fact.value }}</dd>
             </div>
           </dl>
         </header>
@@ -186,7 +169,7 @@ const STEP_TOASTS = {
 
 const route = useRoute()
 const toast = useToast()
-const { books, current: book, load, get, save, setPodium, remove } = useBooks()
+const { books, current: book, load, get, save, remove } = useBooks()
 const { openForm } = useBookForm()
 
 const loading = ref(true)
@@ -194,7 +177,6 @@ const error = ref(null)
 const confirmOpen = ref(false)
 const deleting = ref(false)
 const advancing = ref(false)
-const savingPodium = ref(false)
 
 const medal = computed(() => MEDAL_COLORS[book.value?.podium] || null)
 
@@ -217,19 +199,6 @@ const nextStep = computed(() => {
   if (book.value?.status === 'leyendo') return { label: 'Terminado', icon: 'i-ph-check', status: 'leido', field: 'finished_at' }
   return null
 })
-
-const podiumYear = computed(() => yearOf(book.value?.finished_at))
-
-function holdersFor(field, sameScope) {
-  const holders = {}
-  for (const b of books.value) {
-    if (b[field] && b.id !== book.value?.id && sameScope(b)) holders[b[field]] = b.title
-  }
-  return holders
-}
-
-const yearHolders = computed(() => holdersFor('podium', b => yearOf(b.finished_at) === podiumYear.value))
-const allHolders = computed(() => holdersFor('podium_all', () => true))
 
 const siblings = computed(() => {
   const status = book.value?.status
@@ -295,25 +264,6 @@ async function advance() {
     toast.add({ title: 'No se pudo actualizar', description: err.message, color: 'error' })
   } finally {
     advancing.value = false
-  }
-}
-
-async function rate(value) {
-  try {
-    await save({ id: book.value.id, rating: value })
-  } catch (err) {
-    toast.add({ title: 'No se pudo guardar el puntaje', description: err.message, color: 'error' })
-  }
-}
-
-async function togglePodium(place, field) {
-  savingPodium.value = true
-  try {
-    await setPodium(book.value, place, field)
-  } catch (err) {
-    toast.add({ title: 'No se pudo guardar el podio', description: err.message, color: 'error' })
-  } finally {
-    savingPodium.value = false
   }
 }
 

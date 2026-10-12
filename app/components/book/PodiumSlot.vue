@@ -2,12 +2,13 @@
   <component
     :is="book ? NuxtLink : 'div'"
     :to="book ? `/libros/${book.id}` : undefined"
+    :aria-label="book ? `${PODIUM_LABELS[place]}: ${book.title}` : undefined"
     class="group min-w-0 flex flex-col items-center gap-3 text-center"
   >
     <div
       v-if="book"
       class="w-full rounded-[6px] transition-transform duration-200 ease-out group-hover:-translate-y-1"
-      :style="{ outline: `3px solid ${MEDAL_COLORS[place]}`, outlineOffset: '4px' }"
+      :style="{ outline: `3px solid ${MEDAL_COLORS[place]}`, outlineOffset: '2px' }"
     >
       <BookCover :book="book" />
     </div>
@@ -21,7 +22,6 @@
     >
       {{ PODIUM_LABELS[place] }}
     </span>
-    <span v-if="book" class="w-full t-strong leading-snug line-clamp-2">{{ book.title }}</span>
   </component>
 </template>
 

@@ -1,4 +1,4 @@
-const LIST_COLUMNS = 'id, title, author, status, topic, cover_url, rating, pages, published_year, finished_at, sort_order, podium, podium_all, summary, takeaways, keywords, height_cm, spine_color'
+const LIST_COLUMNS = 'id, title, author, status, topic, cover_url, rating, pages, published_year, finished_at, sort_order, podium, podium_all, summary, takeaways, keywords, height_cm, spine_color, opinion'
 
 export function useBooks() {
   const supabase = useSupabaseClient()

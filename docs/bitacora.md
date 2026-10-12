@@ -90,3 +90,10 @@ porque con `notas.vue` al lado, `[id].vue` pasaba a ser ruta padre y necesitaba 
 - Portadas y Estante son dos vistas con un toggle; comparten header y tabs para que no haya salto.
 - `docs/auditoria.md`: todos los libros con su info en un formato fijo para que Lio la edite de una
   y se reimporte.
+
+## Auditoría importada: opinión, menciones y puntaje mínimo (2026-10-12)
+
+Lio devolvió `docs/auditoria.md` editado con todos los libros y reglas nuevas: opinión por libro,
+menciones honoríficas 4 y 5 en el podio general, puntaje mínimo 4 para cualquier podio, keywords
+con mayúscula y aprendizajes en cantidad par. Se aplicó la migración y se importó el archivo
+entero. En `/podios` los años cerrados ya no muestran huecos que nunca se van a llenar.

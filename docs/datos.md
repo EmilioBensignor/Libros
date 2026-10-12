@@ -25,7 +25,8 @@ Cómo es la tabla y de dónde salió cada dato. Se lee al tocar la base o al car
 | `drive_url` | text | doc de notas original |
 | `cover_url` | text | foto de portada (Apple Books u Open Library); null = portada tipográfica |
 | `podium` | smallint | 1 a 3, puesto en el top del año de `finished_at`; único por año, solo leídos |
-| `podium_all` | smallint | 1 a 3, puesto en el podio general; único por usuario, solo leídos |
+| `podium_all` | smallint | 1 a 5 (4 y 5 = menciones), podio general; único por usuario, solo leídos |
+| `opinion` | text | frase corta de Lio sobre el libro |
 | `sort_order` | int | orden de la cola de por leer (1 = el siguiente) |
 | `created_at` / `updated_at` | timestamptz | `updated_at` por trigger `set_updated_at()` |
 
@@ -94,6 +95,22 @@ para el resto, el formato típico de la edición (tapa dura ~24,1 cm, rústica 1
 - El resto de "Recomendaciones" pasó a `backlog` (migración `20261012030400_libros_backlog`).
 
 Se insertaron por la API REST con la service role de Registro (un solo POST con el array).
+
+## Auditoría de Lio (2026-10-12)
+
+Lio editó `docs/auditoria.md` con todos los libros: puntajes, podios, opiniones, keywords con
+mayúscula, resúmenes y aprendizajes reescritos (6 por libro). Se importó entero por la API REST,
+actualizando cada fila por título (37 de 37). Con eso entraron las reglas nuevas de la migración
+`20261012091018_libros_opinion_y_menciones`: columna `opinion`, `podium_all` de 1 a 5 y el check
+`books_podium_min_rating` (podio solo con `rating >= 4`).
+
+**Reimportar el archivo**: cada libro es un bloque `### Título` con líneas `- Campo: valor` (Autor,
+Estado, Fecha, Tema, Puntaje con coma decimal, Podio año, Podio general, Opinión, Keywords
+separadas por coma), después `**Resumen**` con un párrafo y `**Aprendizajes**` con una lista
+numerada. Se parsea por bloque y se hace `PATCH /rest/v1/books?title=eq.<título>&user_id=eq.<id>`
+con la service role. El título es la clave: no se cambia en el archivo. Si se reimporta con
+podios nuevos, conviene vaciar antes los podios en la base para no chocar con los índices únicos
+a mitad del lote.
 
 ## Cargar más en lote
 

@@ -6,7 +6,7 @@
   >
     <div
       class="relative rounded-[6px] transition-transform duration-200 ease-out group-hover:-translate-y-1 group-active:scale-[0.98]"
-      :style="medal ? { outline: `3px solid ${medal}`, outlineOffset: '4px' } : null"
+      :style="medal ? { outline: `3px solid ${medal}`, outlineOffset: '2px' } : null"
     >
       <BookCover :book="book" />
       <span
